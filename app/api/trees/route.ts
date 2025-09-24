@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Pool, PoolClient } from 'pg';
+import { Pool } from 'pg';
 
 // Define types for better TypeScript support
 interface TreeRow {
@@ -41,13 +41,13 @@ const pool = new Pool({
 });
 
 // Test database connection on startup
-pool.connect((err: Error | undefined, client: PoolClient | undefined, release: () => void) => {
-    if (err) {
-        console.error('Error connecting to database:', err.stack);
-    } else {
-        console.log('Connected to PostgreSQL database');
-        release();
-    }
+pool.connect((err, client, release) => {
+  if (err) {
+    console.error('Error connecting to database:', err.stack);
+  } else {
+    console.log('Connected to PostgreSQL database');
+    release();
+  }
 });
 
 export async function GET(request: NextRequest): Promise<NextResponse<ApiResponse | ErrorResponse | { message: string }>> {
@@ -123,10 +123,9 @@ export async function GET(request: NextRequest): Promise<NextResponse<ApiRespons
 }
 
 // Optional: Add POST method if needed
-export async function POST(request: NextRequest): Promise<NextResponse<ErrorResponse>> {
-    // Handle POST requests if needed
-    return NextResponse.json(
-        { error: 'Method not implemented' },
-        { status: 501 }
-    );
+export async function POST(): Promise<NextResponse<ErrorResponse>> {
+  return NextResponse.json(
+    { error: 'Method not implemented' },
+    { status: 501 }
+  );
 }

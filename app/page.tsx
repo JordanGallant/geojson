@@ -1,9 +1,10 @@
-import Trees from "./_components/trees";
+'use client'
+import dynamic from "next/dynamic";
 
-export default function Home() {
-  return (
-  <>
-  <Trees/>
-  </>
-  );
+const Trees = dynamic(() => import("./_components/trees"), {
+  ssr: false, // ⛔ don’t render on server, only in browser
+});
+
+export default function Page() {
+  return <Trees />;
 }
