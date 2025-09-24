@@ -18,108 +18,68 @@ interface ApiResponse {
   closest: Tree
 }
 
+// Extend Leaflet's Marker type to include custom flag
+interface UserMarker extends L.Marker {
+  isUserLocation?: boolean
+}
+
 export default function Trees() {
-  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null)
+  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(
+    null
+  )
   const [trees, setTrees] = useState<Tree[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<L.Map | null>(null)
 
-  // Initialize map once location is available
-// Initialize map ONCE
-useEffect(() => {
-  if (typeof window !== 'undefined' && mapRef.current && !mapInstanceRef.current) {
-    delete (L.Icon.Default.prototype as { _getIconUrl?: unknown })._getIconUrl
-    L.Icon.Default.mergeOptions({
-      iconRetinaUrl:
-        'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-      iconUrl:
-        'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-      shadowUrl:
-        'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-    })
-
-    mapInstanceRef.current = L.map(mapRef.current).setView([52.3676, 4.9041], 13) // fallback center (Amsterdam)
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors',
-    }).addTo(mapInstanceRef.current)
-  }
-}, [])
-
-// Update user location + trees
-useEffect(() => {
-  if (mapInstanceRef.current && location) {
-    // Remove old tree markers but keep base layers
-    mapInstanceRef.current.eachLayer((layer: L.Layer) => {
-      if (layer instanceof L.Marker && !(layer as any).isUserLocation) {
-        mapInstanceRef.current?.removeLayer(layer)
-      }
-    })
-
-    // Add/update user location marker
-    const userIcon = L.divIcon({
-      className: 'user-marker',
-      html: '<div style="background-color: #3b82f6; width: 20px; height: 20px; border-radius: 50%; border: 2px solid white;"></div>',
-      iconSize: [20, 20],
-    })
-
-    const userMarker = L.marker([location.lat, location.lng], { icon: userIcon }) as any
-    userMarker.isUserLocation = true // 🔑 so it won’t get removed
-    userMarker.addTo(mapInstanceRef.current).bindPopup('Your Location')
-
-    // Add tree markers
-    trees.forEach((tree, index) => {
-      const treeIcon = L.divIcon({
-        className: 'tree-marker',
-        html: `<div style="background-color: ${
-          index === 0 ? '#ef4444' : '#22c55e'
-        }; width: 16px; height: 16px; border-radius: 50%; border: 2px solid white;"></div>`,
-        iconSize: [16, 16],
+  // Initialize map ONCE
+  useEffect(() => {
+    if (typeof window !== 'undefined' && mapRef.current && !mapInstanceRef.current) {
+      delete (L.Icon.Default.prototype as { _getIconUrl?: unknown })._getIconUrl
+      L.Icon.Default.mergeOptions({
+        iconRetinaUrl:
+          'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+        iconUrl:
+          'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+        shadowUrl:
+          'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
       })
 
-      L.marker([tree.coordinates[1], tree.coordinates[0]], { icon: treeIcon })
-        .addTo(mapInstanceRef.current!)
-        .bindPopup(`
-          <strong>${tree.boomsoort}</strong><br>
-          Height: ${tree.boomhoogte}m<br>
-          Distance: ${tree.distance}m
-          ${index === 0 ? '<br><em>Closest tree</em>' : ''}
-        `)
-    })
+      // fallback center (Amsterdam)
+      mapInstanceRef.current = L.map(mapRef.current).setView([52.3676, 4.9041], 13)
 
-    // Adjust map view
-    const group = new L.FeatureGroup([
-      L.marker([location.lat, location.lng]),
-      ...trees.map((tree) => L.marker([tree.coordinates[1], tree.coordinates[0]])),
-    ])
-    mapInstanceRef.current.fitBounds(group.getBounds().pad(0.1))
-  }
-}, [location, trees])
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+      }).addTo(mapInstanceRef.current)
+    }
+  }, [])
 
-
-  // Update map when location or trees change
+  // Update user location + tree markers
   useEffect(() => {
     if (mapInstanceRef.current && location) {
-      // Clear markers only (not base tiles)
+      // Remove old tree markers but keep user location
       mapInstanceRef.current.eachLayer((layer: L.Layer) => {
-        if (layer instanceof L.Marker) {
-          mapInstanceRef.current?.removeLayer(layer)
+        const marker = layer as UserMarker
+        if (marker instanceof L.Marker && !marker.isUserLocation) {
+          mapInstanceRef.current?.removeLayer(marker)
         }
       })
 
-      // Add user location marker
+      // Add/update user location marker (blue)
       const userIcon = L.divIcon({
         className: 'user-marker',
         html: '<div style="background-color: #3b82f6; width: 20px; height: 20px; border-radius: 50%; border: 2px solid white;"></div>',
         iconSize: [20, 20],
       })
 
-      L.marker([location.lat, location.lng], { icon: userIcon })
-        .addTo(mapInstanceRef.current)
-        .bindPopup('Your Location')
+      const userMarker: UserMarker = L.marker([location.lat, location.lng], {
+        icon: userIcon,
+      })
+      userMarker.isUserLocation = true
+      userMarker.addTo(mapInstanceRef.current).bindPopup('Your Location')
 
-      // Add tree markers
+      // Add tree markers (closest = red, others green)
       trees.forEach((tree, index) => {
         const treeIcon = L.divIcon({
           className: 'tree-marker',
@@ -139,7 +99,7 @@ useEffect(() => {
           `)
       })
 
-      // Adjust map to fit all markers
+      // Adjust map view to fit all markers
       if (trees.length > 0) {
         const group = new L.FeatureGroup([
           L.marker([location.lat, location.lng]),
@@ -149,13 +109,10 @@ useEffect(() => {
         ])
         mapInstanceRef.current.fitBounds(group.getBounds().pad(0.1))
       }
-
-      // Fix map resizing on viewport/orientation changes
-      mapInstanceRef.current.invalidateSize()
     }
   }, [location, trees])
 
-  // Fetch trees near user
+  // Get current location and query trees
   const findTrees = () => {
     setLoading(true)
     setError(null)
@@ -183,7 +140,7 @@ useEffect(() => {
           } else {
             setError('No trees found')
           }
-        } catch {
+        } catch (err) {
           setError('Failed to fetch trees')
         } finally {
           setLoading(false)
@@ -196,7 +153,7 @@ useEffect(() => {
     )
   }
 
-  // Auto-run once on mount
+  // Auto-load on mount
   useEffect(() => {
     findTrees()
   }, [])
@@ -224,21 +181,11 @@ useEffect(() => {
         </div>
       )}
 
-      {/* Responsive map container */}
       <div
         ref={mapRef}
-        className="
-          w-full 
-          h-[60vh]       /* mobile */
-          sm:h-[70vh]    /* tablets */
-          lg:h-[80vh]    /* desktops */
-          rounded-lg 
-          border-2 
-          border-gray-300
-        "
+        className="w-full h-[80vh] rounded-lg border-2 border-gray-300"
       />
 
-      {/* Leaflet CSS */}
       <link
         rel="stylesheet"
         href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
@@ -248,3 +195,4 @@ useEffect(() => {
     </div>
   )
 }
+//dumbass
