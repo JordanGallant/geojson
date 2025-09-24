@@ -3,12 +3,13 @@ import { Pool } from 'pg';
 
 // Define types for better TypeScript support
 interface TreeRow {
-    id: string;
-    Boomsoort: string;
-    Boomhoogte: number;
-    longitude: number;
-    latitude: number;
-    distance_meters: number;
+  id: string
+  Boomsoort: string
+  Boomhoogte: string
+  Leeftijd: number
+  longitude: number
+  latitude: number
+  distance_meters: number
 }
 
 interface Tree {
@@ -100,7 +101,7 @@ export async function GET(request: NextRequest): Promise<NextResponse<ApiRespons
             return NextResponse.json({ message: 'No trees found' });
         }
         
-        const trees: Tree[] = result.rows.map((row: any) => ({
+        const trees: Tree[] = result.rows.map((row: TreeRow) => ({
   id: row.id,
   boomsoort: row.Boomsoort,
   boomhoogte: parseFloat(row.Boomhoogte), // convert if needed
