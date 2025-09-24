@@ -163,10 +163,9 @@ useEffect(() => {
 
       {/* Map Container */}
       <div 
-        ref={mapRef} 
-        className="w-full h-96 rounded-lg border-2 border-gray-300"
-        style={{ minHeight: '400px' }}
-      />
+  ref={mapRef} 
+  className="w-full h-[80vh] rounded-lg border-2 border-gray-300"
+/>
 
       {/* Add Leaflet CSS */}
       <link
