@@ -7,6 +7,7 @@ interface Tree {
   id: string
   boomsoort: string
   boomhoogte: number
+  leeftijd: number   // added
   coordinates: [number, number]
   distance: number
 }
@@ -93,8 +94,9 @@ export default function Trees() {
           .addTo(mapInstanceRef.current!)
           .bindPopup(`
             <strong>${tree.boomsoort}</strong><br>
-            Height: ${tree.boomhoogte}m<br>
-            Distance: ${tree.distance}m
+            Height: ${tree.boomhoogte}<br>
+            Distance: ${tree.distance}m<br>
+            Age: ${tree.leeftijd}
             ${index === 0 ? '<br><em>Closest tree</em>' : ''}
           `)
       })

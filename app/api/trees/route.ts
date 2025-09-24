@@ -12,11 +12,12 @@ interface TreeRow {
 }
 
 interface Tree {
-    id: string;
-    boomsoort: string;
-    boomhoogte: number;
-    coordinates: [number, number];
-    distance: number;
+  id: string
+  boomsoort: string
+  boomhoogte: number
+  leeftijd: number   // added
+  coordinates: [number, number]
+  distance: number
 }
 
 interface ApiResponse {
@@ -80,6 +81,7 @@ export async function GET(request: NextRequest): Promise<NextResponse<ApiRespons
                 "ID" AS id,
                 "Boomsoort",
                 "Boomhoogte",
+                "Leeftijd",
                 ST_X("geometry") AS longitude,
                 ST_Y("geometry") AS latitude,
                 ST_Distance(
@@ -98,13 +100,15 @@ export async function GET(request: NextRequest): Promise<NextResponse<ApiRespons
             return NextResponse.json({ message: 'No trees found' });
         }
         
-        const trees: Tree[] = result.rows.map((row: TreeRow) => ({
-            id: row.id,
-            boomsoort: row.Boomsoort,
-            boomhoogte: row.Boomhoogte,
-            coordinates: [row.longitude, row.latitude],
-            distance: Math.round(row.distance_meters)
-        }));
+        const trees: Tree[] = result.rows.map((row: any) => ({
+  id: row.id,
+  boomsoort: row.Boomsoort,
+  boomhoogte: parseFloat(row.Boomhoogte), // convert if needed
+  leeftijd: row.Leeftijd,
+  coordinates: [row.longitude, row.latitude],
+  distance: Math.round(row.distance_meters),
+}));
+
         
         return NextResponse.json({
             success: true,
