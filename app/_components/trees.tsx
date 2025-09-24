@@ -27,34 +27,76 @@ export default function Trees() {
   const mapInstanceRef = useRef<L.Map | null>(null)
 
   // Initialize map once location is available
-  useEffect(() => {
-    if (
-      typeof window !== 'undefined' &&
-      mapRef.current &&
-      !mapInstanceRef.current &&
-      location
-    ) {
-      // Fix for default markers
-      delete (L.Icon.Default.prototype as { _getIconUrl?: unknown })._getIconUrl
-      L.Icon.Default.mergeOptions({
-        iconRetinaUrl:
-          'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-        iconUrl:
-          'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-        shadowUrl:
-          'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+// Initialize map ONCE
+useEffect(() => {
+  if (typeof window !== 'undefined' && mapRef.current && !mapInstanceRef.current) {
+    delete (L.Icon.Default.prototype as { _getIconUrl?: unknown })._getIconUrl
+    L.Icon.Default.mergeOptions({
+      iconRetinaUrl:
+        'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+      iconUrl:
+        'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+      shadowUrl:
+        'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+    })
+
+    mapInstanceRef.current = L.map(mapRef.current).setView([52.3676, 4.9041], 13) // fallback center (Amsterdam)
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors',
+    }).addTo(mapInstanceRef.current)
+  }
+}, [])
+
+// Update user location + trees
+useEffect(() => {
+  if (mapInstanceRef.current && location) {
+    // Remove old tree markers but keep base layers
+    mapInstanceRef.current.eachLayer((layer: L.Layer) => {
+      if (layer instanceof L.Marker && !(layer as any).isUserLocation) {
+        mapInstanceRef.current?.removeLayer(layer)
+      }
+    })
+
+    // Add/update user location marker
+    const userIcon = L.divIcon({
+      className: 'user-marker',
+      html: '<div style="background-color: #3b82f6; width: 20px; height: 20px; border-radius: 50%; border: 2px solid white;"></div>',
+      iconSize: [20, 20],
+    })
+
+    const userMarker = L.marker([location.lat, location.lng], { icon: userIcon }) as any
+    userMarker.isUserLocation = true // 🔑 so it won’t get removed
+    userMarker.addTo(mapInstanceRef.current).bindPopup('Your Location')
+
+    // Add tree markers
+    trees.forEach((tree, index) => {
+      const treeIcon = L.divIcon({
+        className: 'tree-marker',
+        html: `<div style="background-color: ${
+          index === 0 ? '#ef4444' : '#22c55e'
+        }; width: 16px; height: 16px; border-radius: 50%; border: 2px solid white;"></div>`,
+        iconSize: [16, 16],
       })
 
-      mapInstanceRef.current = L.map(mapRef.current).setView(
-        [location.lat, location.lng],
-        15
-      )
+      L.marker([tree.coordinates[1], tree.coordinates[0]], { icon: treeIcon })
+        .addTo(mapInstanceRef.current!)
+        .bindPopup(`
+          <strong>${tree.boomsoort}</strong><br>
+          Height: ${tree.boomhoogte}m<br>
+          Distance: ${tree.distance}m
+          ${index === 0 ? '<br><em>Closest tree</em>' : ''}
+        `)
+    })
 
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors',
-      }).addTo(mapInstanceRef.current)
-    }
-  }, [location])
+    // Adjust map view
+    const group = new L.FeatureGroup([
+      L.marker([location.lat, location.lng]),
+      ...trees.map((tree) => L.marker([tree.coordinates[1], tree.coordinates[0]])),
+    ])
+    mapInstanceRef.current.fitBounds(group.getBounds().pad(0.1))
+  }
+}, [location, trees])
+
 
   // Update map when location or trees change
   useEffect(() => {
